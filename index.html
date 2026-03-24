@@ -5,98 +5,83 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>WAR-WAR: ТЕРМИНАЛ</title>
     <style>
-        body { background: #050a05; color: #00ff41; font-family: monospace; margin: 0; display: flex; align-items: center; justify-content: center; height: 100vh; text-transform: uppercase; }
-        #terminal { border: 2px solid #00ff41; padding: 20px; width: 90%; max-width: 400px; text-align: center; box-shadow: 0 0 15px #00ff41; }
-        input { background: #000; border: 1px solid #00ff41; color: #00ff41; padding: 10px; width: 100%; box-sizing: border-box; margin: 10px 0; outline: none; }
+        body { background: #050a05; color: #00ff41; font-family: monospace; margin: 0; display: flex; align-items: center; justify-content: center; height: 100vh; text-transform: uppercase; text-align: center; }
+        #terminal { border: 2px solid #00ff41; padding: 20px; width: 90%; max-width: 400px; box-shadow: 0 0 15px #00ff41; background: #000; }
+        input, select { background: #000; border: 1px solid #00ff41; color: #00ff41; padding: 10px; width: 100%; box-sizing: border-box; margin: 10px 0; outline: none; font-family: monospace; }
         button { background: #00ff41; color: #000; border: none; padding: 15px; width: 100%; cursor: pointer; font-weight: bold; margin-top: 10px; }
         .hidden { display: none; }
-        img { width: 100%; border: 1px solid #00ff41; margin-top: 10px; }
+        img { width: 100%; border: 1px solid #00ff41; margin-top: 10px; height: 200px; object-fit: cover; }
         #timer { font-size: 2em; color: #ff3131; }
     </style>
 </head>
 <body>
 
 <div id="terminal">
-    <!-- ЭКРАН 1: АВТОРИЗАЦИЯ -->
     <div id="auth-screen">
         <h2 id="phase-title">ЗАГРУЗКА...</h2>
+        <p>ВЫБЕРИТЕ ПОДРАЗДЕЛЕНИЕ:</p>
+        <select id="team-select">
+            <option value="1">КОМАНДА №1</option>
+            <option value="2">КОМАНДА №2</option>
+            <option value="3">КОМАНДА №3</option>
+            <option value="4">КОМАНДА №4</option>
+        </select>
         <input type="text" id="pass-input" placeholder="КЛЮЧ АКТИВАЦИИ...">
         <button onclick="checkAuth()">ВХОД В СИСТЕМУ</button>
     </div>
 
-    <!-- ЭКРАН 2: ИГРА -->
     <div id="game-screen" class="hidden">
-        <div id="timer">60</div>
+        <div id="timer">120</div>
         <div id="task-content"></div>
         <input type="text" id="ans-input" class="hidden" placeholder="ОТВЕТ...">
         <div id="opt-container"></div>
         <button id="submit-btn" onclick="processAnswer()">ОТПРАВИТЬ</button>
     </div>
 
-    <!-- ЭКРАН 3: ФИНАЛ -->
     <div id="result-screen" class="hidden">
         <h2>МИССИЯ ЗАВЕРШЕНА</h2>
-        <p>БАЛЛЫ: <span id="final-score">0</span></p>
+        <p>ВАШ РЕЗУЛЬТАТ: <span id="final-score">0</span> БАЛЛОВ</p>
+        <p id="status-msg">ОТПРАВКА ДАННЫХ...</p>
         <p id="next-step-code" style="color: #ffcc00; font-weight: bold;"></p>
     </div>
 </div>
 
 <script>
-    // 1. КОНФИГУРАЦИЯ
+    const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwm4Y4dz2Im0CITbWlug53xvQ5zFB-MSevacnq04suu5dIFCQh84m1AzYcG8G4AE4E/exec";
     const keys = { 'sapper': 'EXPLOSIVE', 'recon': 'RADAR' };
     const nextCodes = { 'sapper': 'СЛЕДУЮЩИЙ КОД: RADAR', 'recon': 'ФИНАЛЬНЫЙ КОД: VICTOR' };
     
     const sapperTasks = [
-        { q: "ШИФРОВКА: .-- --- -.. .- (ОТВЕТ - СЛОВО)", a: "ВОДА" },
-        { q: "КАЛИБР АК-74 (ЧИСЛО ЧЕРЕЗ ТОЧКУ)", a: "5.45" },
-        { q: "СКОЛЬКО ЗВЕЗД НА ПОГОНАХ КАПИТАНА?", a: "4" },
-        { q: "ОСНОВНОЙ ТАНК РФ С НЕОБИТАЕМОЙ БАШНЕЙ?", a: "АРМАТА" },
-        { q: "ГОРОД-ГЕРОЙ, ВЫСТОЯВШИЙ 872 ДНЯ БЛОКАДЫ?", a: "ЛЕНИНГРАД" },
-        { q: "КАК НАЗЫВАЕТСЯ ВОЕННЫЙ КОРАБЛЬ-АВИАНОСЕЦ РФ?", a: "КУЗНЕЦОВ" },
-        { q: "ШИФРОВКА: --- --. --- -. -..-", a: "ОГОНЬ" },
-        { q: "КАКОЙ ПРЕДМЕТ ЗАМЕНИЛ ПОРТЯНКИ В АРМИИ?", a: "НОСКИ" },
-        { q: "КАК НАЗЫВАЕТСЯ ЦИФРОВОЙ ШТАБ НАШЕЙ ИГРЫ?", a: "WAR-WAR" },
-        { q: "КТО ОШИБАЕТСЯ ОДИН РАЗ? (ПРОФЕССИЯ)", a: "САПЕР" }
+        { q: "ШИФРОВКА: .-- --- -.. .-", a: "ВОДА" },
+        { q: "КАЛИБР АК-74", a: "5.45" },
+        { q: "ЗВЕЗД У КАПИТАНА?", a: "4" },
+        { q: "ТАНК С НЕОБИТАЕМОЙ БАШНЕЙ?", a: "АРМАТА" }
     ];
 
     const reconTasks = [
-        { q: "ЦЕЛЬ #1: ТЯЖЕЛАЯ БРОНЯ", img: "t90.jpg", opt: ["Т-72", "Т-90М", "Т-14"], a: "Т-90М" },
-        { q: "ЦЕЛЬ #2: УДАРНЫЙ ВЕРТОЛЕТ", img: "ka52.jpg", opt: ["МИ-28", "МИ-8", "КА-52"], a: "КА-52" },
-        { q: "ЦЕЛЬ #3: ИСТРЕБИТЕЛЬ 5-ГО ПОКОЛЕНИЯ", img: "su57.jpg", opt: ["СУ-35", "СУ-57", "МИГ-31"], a: "СУ-57" },
-        { q: "ЦЕЛЬ #4: БОЕВАЯ МАШИНА ПЕХОТЫ", img: "bmp3.jpg", opt: ["БМП-3", "БТР-82", "МТ-ЛБ"], a: "БМП-3" },
-        { q: "ЦЕЛЬ #5: ЗЕНИТНЫЙ КОМПЛЕКС", img: "pancir.jpg", opt: ["БУК", "ТОР", "ПАНЦИРЬ-С1"], a: "ПАНЦИРЬ-С1" },
-        { q: "ЦЕЛЬ #6: НОЧНОЙ ОХОТНИК", img: "mi28.jpg", opt: ["МИ-24", "МИ-28", "КА-50"], a: "МИ-28" },
-        { q: "ЦЕЛЬ #7: РЕАКТИВНАЯ СИСТЕМА ЗАЛПА", img: "grad.jpg", opt: ["ГРАД", "СМЕРЧ", "УРАГАН"], a: "ГРАД" }
+        { q: "ОПОЗНАНИЕ: ТАНК", img: "t90.jpg", opt: ["Т-72", "Т-90М", "Т-14"], a: "Т-90М" },
+        { q: "ОПОЗНАНИЕ: ВЕРТОЛЕТ", img: "ka52.jpg", opt: ["МИ-28", "МИ-8", "КА-52"], a: "КА-52" }
     ];
 
-    // 2. СОСТОЯНИЕ
     let urlParams = new URLSearchParams(window.location.search);
     let currentPhase = urlParams.get('phase') || 'sapper';
-    let currentIdx = 0;
-    let score = 0;
-    let time = 120;
-    let timer;
+    let currentIdx = 0, score = 0, time = 120, timer, selectedTeam;
 
-    // Инициализация заголовка
     document.getElementById('phase-title').innerText = "ФАЗА: " + currentPhase.toUpperCase();
 
-    // 3. ЛОГИКА
     function checkAuth() {
         const val = document.getElementById('pass-input').value.trim().toUpperCase();
+        selectedTeam = document.getElementById('team-select').value;
         if (val === keys[currentPhase]) {
             document.getElementById('auth-screen').className = 'hidden';
             document.getElementById('game-screen').classList.remove('hidden');
-            startTimer();
-            renderTask();
-        } else {
-            alert("ОТКАЗАНО! " + val + " НЕ ВЕРНО.");
-        }
+            startTimer(); renderTask();
+        } else { alert("ОТКАЗАНО!"); }
     }
 
     function startTimer() {
         timer = setInterval(() => {
-            time--;
-            document.getElementById('timer').innerText = time;
+            time--; document.getElementById('timer').innerText = time;
             if (time <= 0) finish();
         }, 1000);
     }
@@ -104,39 +89,29 @@
     function renderTask() {
         const pool = currentPhase === 'sapper' ? sapperTasks : reconTasks;
         if (currentIdx >= pool.length) { finish(); return; }
-
         const task = pool[currentIdx];
         const cont = document.getElementById('task-content');
+        cont.innerHTML = `<h3>${task.q}</h3>`;
+        if (task.img) cont.innerHTML += `<img src="${task.img}">`;
+        
         const opts = document.getElementById('opt-container');
         const inp = document.getElementById('ans-input');
         const btn = document.getElementById('submit-btn');
 
-        cont.innerHTML = `<h3>${task.q}</h3>`;
-        if (task.img) cont.innerHTML += `<img src="${task.img}">`;
-
         if (currentPhase === 'recon') {
-            inp.className = 'hidden';
-            btn.className = 'hidden';
-            opts.innerHTML = '';
-            task.opt.forEach(o => {
-                opts.innerHTML += `<button onclick="handleBtn('${o}')">${o}</button>`;
-            });
+            inp.className = 'hidden'; btn.className = 'hidden'; opts.innerHTML = '';
+            task.opt.forEach(o => { opts.innerHTML += `<button onclick="checkAndNext('${o}')">${o}</button>`; });
         } else {
-            inp.classList.remove('hidden');
-            inp.value = '';
-            opts.innerHTML = '';
-            btn.classList.remove('hidden');
+            inp.classList.remove('hidden'); inp.value = ''; opts.innerHTML = ''; btn.classList.remove('hidden');
         }
     }
 
-    function handleBtn(val) { checkAndNext(val); }
     function processAnswer() { checkAndNext(document.getElementById('ans-input').value); }
 
     function checkAndNext(val) {
         const pool = currentPhase === 'sapper' ? sapperTasks : reconTasks;
         if (val.trim().toUpperCase() === pool[currentIdx].a.toUpperCase()) score++;
-        currentIdx++;
-        renderTask();
+        currentIdx++; renderTask();
     }
 
     function finish() {
@@ -145,6 +120,11 @@
         document.getElementById('result-screen').classList.remove('hidden');
         document.getElementById('final-score').innerText = score;
         document.getElementById('next-step-code').innerText = nextCodes[currentPhase];
+        
+        // ОТПРАВКА В ГУГЛ-АЛТАРЬ
+        fetch(`${SCRIPT_URL}?team=${selectedTeam}&score=${score}`)
+            .then(() => { document.getElementById('status-msg').innerText = "ДАННЫЕ ПРИНЯТЫ В ШТАБ"; })
+            .catch(() => { document.getElementById('status-msg').innerText = "ОШИБКА СВЯЗИ. СООБЩИТЕ СУДЬЕ!"; });
     }
 </script>
 </body>
