@@ -47,7 +47,7 @@
 </div>
 
 <script>
-    const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwm4Y4dz2Im0CITbWlug53xvQ5zFB-MSevacnq04suu5dIFCQh84m1AzYcG8G4AE4E/exec";
+    const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzhdqUwo0NVdEn67glEvTX8y93YfxgQbBp9bCLaq8tW_I7reoeXC7-bKyDbfgWB9HmP/exec";
     const keys = { 'sapper': 'EXPLOSIVE', 'recon': 'RADAR' };
     const nextCodes = { 'sapper': 'СЛЕДУЮЩИЙ КОД: RADAR', 'recon': 'ФИНАЛЬНЫЙ КОД: VICTOR' };
     
@@ -132,8 +132,8 @@
         document.getElementById('final-score').innerText = score;
         document.getElementById('next-step-code').innerText = nextCodes[currentPhase];
         
-        // ОТПРАВКА В ГУГЛ-АЛТАРЬ
-        fetch(`${SCRIPT_URL}?team=${selectedTeam}&score=${score}`)
+        // ОТПРАВКА С УЧЕТОМ ФАЗЫ
+        fetch(`${SCRIPT_URL}?team=${selectedTeam}&score=${score}&phase=${currentPhase}`)
             .then(() => { document.getElementById('status-msg').innerText = "ДАННЫЕ ПРИНЯТЫ В ШТАБ"; })
             .catch(() => { document.getElementById('status-msg').innerText = "ОШИБКА СВЯЗИ. СООБЩИТЕ СУДЬЕ!"; });
     }
