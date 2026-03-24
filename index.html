@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>L & ⅂: ЦИФРОВОЙ СОЛДАТ</title>
+    <link href="https://fonts.googleapis.com" rel="stylesheet">
+    <style>
+        body { background-color: #050a05; color: #00ff41; font-family: 'Courier Prime', monospace; margin: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; overflow: hidden; text-transform: uppercase; }
+        #terminal { border: 2px solid #00ff41; padding: 20px; width: 90%; max-width: 500px; box-shadow: 0 0 15px #00ff41; background: rgba(0, 20, 0, 0.9); position: relative; }
+        .glitch { animation: glitch 1s linear infinite; }
+        @keyframes glitch { 2% { text-shadow: 2px 0 #ff0000, -2px 0 #0000ff; } 98% { text-shadow: -2px 0 #ff0000, 2px 0 #0000ff; } }
+        input { background: #000; border: 1px solid #00ff41; color: #00ff41; padding: 10px; width: 100%; box-sizing: border-box; margin-top: 10px; outline: none; }
+        button { background: #00ff41; color: #000; border: none; padding: 15px; width: 100%; margin-top: 15px; cursor: pointer; font-weight: bold; font-family: 'Courier Prime'; }
+        button:hover { background: #008f11; }
+        #timer { font-size: 2em; color: #ff3131; margin-bottom: 10px; }
+        img { width: 100%; border: 1px solid #00ff41; margin-top: 10px; filter: grayscale(100%) sepia(50%) hue-rotate(100deg); }
+        .hidden { display: none; }
+    </style>
+</head>
+<body>
+
+<div id="terminal">
+    <div id="auth-screen">
+        <h2 class="glitch">ВНИМАНИЕ: СЕКТОР ЗАБЛОКИРОВАН</h2>
+        <p>Введите код доступа следующей фазы:</p>
+        <input type="text" id="pass-input" placeholder="КЛЮЧ АКТИВАЦИИ...">
+        <button onclick="checkAuth()">АВТОРИЗАЦИЯ</button>
+    </div>
+
+    <div id="game-screen" class="hidden">
+        <div id="timer">60</div>
+        <div id="content"></div>
+        <input type="text" id="answer-input" class="hidden" placeholder="ОТВЕТ...">
+        <div id="options" class="hidden"></div>
+        <button id="next-btn" onclick="submitAnswer()">ПОДТВЕРДИТЬ</button>
+    </div>
+
+    <div id="result-screen" class="hidden">
+        <h2 id="status">МИССИЯ ЗАВЕРШЕНА</h2>
+        <p>ВАШ РЕЗУЛЬТАТ: <span id="score">0</span></p>
+        <p id="next-code" style="color: #ffcc00;"></p>
+    </div>
+</div>
+
+<script>
+    const urlParams = new URLSearchParams(window.location.search);
+    const phase = urlParams.get('phase') || 'sapper'; // По умолчанию Сапер
+    
+    // Мастер-ключи для входа (те, что команда получает на предыдущем этапе)
+    const masterKeys = { 'sapper': 'EXPLOSIVE', 'recon': 'RADAR' };
+    const nextPhaseCodes = { 'sapper': 'КОД ДЛЯ РЕКОН: RADAR', 'recon': 'ФИНАЛЬНЫЙ КОД: VICTOR' };
+
+    let currentTask = 0;
+    let score = 0;
+    let timeLeft = 60;
+    let timerId;
+
+    const sapperTasks = [
+        { q: "ШИФРОВКА: .-- --- -.. .- (ОТВЕТ - СЛОВО)", a: "ВОДА" },
+        { q: "КАЛИБР АК-74 (ЧИСЛО ЧЕРЕЗ ТОЧКУ)", a: "5.45" }
+    ];
+
+    const reconTasks = [
+        { q: "ОПОЗНАНИЕ ЦЕЛИ #1", img: "t90.jpg", options: ["Т-72", "Т-90М", "Т-14"], a: "Т-90М" },
+        { q: "ОПОЗНАНИЕ ЦЕЛИ #2", img: "ka52.jpg", options: ["МИ-28", "МИ-8", "КА-52"], a: "КА-52" }
+    ];
+
+    function checkAuth() {
+        const pass = document.getElementById('pass-input').value.toUpperCase();
+        if (pass === masterKeys[phase]) {
+            document.getElementById('auth-screen').classList.add('hidden');
+            document.getElementById('game-screen').classList.remove('hidden');
+            startPhase();
+        } else { alert("ОШИБКА ДОСТУПА!"); }
+    }
+
+    function startPhase() {
+        timerId = setInterval(() => {
+            timeLeft--;
+            document.getElementById('timer').innerText = timeLeft;
+            if (timeLeft <= 0) endPhase();
+        }, 1000);
+        showTask();
+    }
+
+    function showTask() {
+        const tasks = phase === 'sapper' ? sapperTasks : reconTasks;
+        if (currentTask >= tasks.length) { endPhase(); return; }
+
+        const content = document.getElementById('content');
+        const task = tasks[currentTask];
+        content.innerHTML = `<h3>${task.q}</h3>`;
+        
+        if (task.img) { content.innerHTML += `<img src="${task.img}">`; }
+
+        if (phase === 'recon') {
+            document.getElementById('answer-input').classList.add('hidden');
+            const optDiv = document.getElementById('options');
+            optDiv.classList.remove('hidden');
+            optDiv.innerHTML = '';
+            task.options.forEach(opt => {
+                optDiv.innerHTML += `<button onclick="setAnswer('${opt}')">${opt}</button>`;
+            });
+            document.getElementById('next-btn').classList.add('hidden');
+        } else {
+            document.getElementById('answer-input').classList.remove('hidden');
+            document.getElementById('answer-input').value = '';
+        }
+    }
+
+    let selectedAnswer = "";
+    function setAnswer(val) { selectedAnswer = val; submitAnswer(); }
+
+    function submitAnswer() {
+        const tasks = phase === 'sapper' ? sapperTasks : reconTasks;
+        const correct = tasks[currentTask].a.toUpperCase();
+        const userAns = (phase === 'sapper' ? document.getElementById('answer-input').value : selectedAnswer).toUpperCase();
+
+        if (userAns === correct) score++;
+        currentTask++;
+        showTask();
+    }
+
+    function endPhase() {
+        clearInterval(timerId);
+        document.getElementById('game-screen').classList.add('hidden');
+        document.getElementById('result-screen').classList.remove('hidden');
+        document.getElementById('score').innerText = score;
+        document.getElementById('next-code').innerText = nextPhaseCodes[phase];
+    }
+</script>
+</body>
+</html>
