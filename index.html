@@ -3,151 +3,135 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>L & ⅂: ЦИФРОВОЙ СОЛДАТ</title>
-    <link href="https://fonts.googleapis.com" rel="stylesheet">
+    <title>WAR-WAR: ТЕРМИНАЛ</title>
     <style>
-        body { background-color: #050a05; color: #00ff41; font-family: 'Courier Prime', monospace; margin: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; overflow: hidden; text-transform: uppercase; }
-        #terminal { border: 2px solid #00ff41; padding: 20px; width: 90%; max-width: 500px; box-shadow: 0 0 15px #00ff41; background: rgba(0, 20, 0, 0.9); position: relative; }
-        .glitch { animation: glitch 1s linear infinite; }
-        @keyframes glitch { 2% { text-shadow: 2px 0 #ff0000, -2px 0 #0000ff; } 98% { text-shadow: -2px 0 #ff0000, 2px 0 #0000ff; } }
-        input { background: #000; border: 1px solid #00ff41; color: #00ff41; padding: 10px; width: 100%; box-sizing: border-box; margin-top: 10px; outline: none; }
-        button { background: #00ff41; color: #000; border: none; padding: 15px; width: 100%; margin-top: 15px; cursor: pointer; font-weight: bold; font-family: 'Courier Prime'; }
-        button:hover { background: #008f11; }
-        #timer { font-size: 2em; color: #ff3131; margin-bottom: 10px; }
-        img { width: 100%; border: 1px solid #00ff41; margin-top: 10px; filter: grayscale(100%) sepia(50%) hue-rotate(100deg); }
+        body { background: #050a05; color: #00ff41; font-family: monospace; margin: 0; display: flex; align-items: center; justify-content: center; height: 100vh; text-transform: uppercase; }
+        #terminal { border: 2px solid #00ff41; padding: 20px; width: 90%; max-width: 400px; text-align: center; box-shadow: 0 0 15px #00ff41; }
+        input { background: #000; border: 1px solid #00ff41; color: #00ff41; padding: 10px; width: 100%; box-sizing: border-box; margin: 10px 0; outline: none; }
+        button { background: #00ff41; color: #000; border: none; padding: 15px; width: 100%; cursor: pointer; font-weight: bold; margin-top: 10px; }
         .hidden { display: none; }
+        img { width: 100%; border: 1px solid #00ff41; margin-top: 10px; }
+        #timer { font-size: 2em; color: #ff3131; }
     </style>
 </head>
 <body>
 
 <div id="terminal">
+    <!-- ЭКРАН 1: АВТОРИЗАЦИЯ -->
     <div id="auth-screen">
-        <h2 class="glitch">ВНИМАНИЕ: СЕКТОР ЗАБЛОКИРОВАН</h2>
-        <p>Введите код доступа следующей фазы:</p>
+        <h2 id="phase-title">ЗАГРУЗКА...</h2>
         <input type="text" id="pass-input" placeholder="КЛЮЧ АКТИВАЦИИ...">
-        <button onclick="checkAuth()">АВТОРИЗАЦИЯ</button>
+        <button onclick="checkAuth()">ВХОД В СИСТЕМУ</button>
     </div>
 
+    <!-- ЭКРАН 2: ИГРА -->
     <div id="game-screen" class="hidden">
         <div id="timer">60</div>
-        <div id="content"></div>
-        <input type="text" id="answer-input" class="hidden" placeholder="ОТВЕТ...">
-        <div id="options" class="hidden"></div>
-        <button id="next-btn" onclick="submitAnswer()">ПОДТВЕРДИТЬ</button>
+        <div id="task-content"></div>
+        <input type="text" id="ans-input" class="hidden" placeholder="ОТВЕТ...">
+        <div id="opt-container"></div>
+        <button id="submit-btn" onclick="processAnswer()">ОТПРАВИТЬ</button>
     </div>
 
+    <!-- ЭКРАН 3: ФИНАЛ -->
     <div id="result-screen" class="hidden">
-        <h2 id="status">МИССИЯ ЗАВЕРШЕНА</h2>
-        <p>ВАШ РЕЗУЛЬТАТ: <span id="score">0</span></p>
-        <p id="next-code" style="color: #ffcc00;"></p>
+        <h2>МИССИЯ ЗАВЕРШЕНА</h2>
+        <p>БАЛЛЫ: <span id="final-score">0</span></p>
+        <p id="next-step-code" style="color: #ffcc00; font-weight: bold;"></p>
     </div>
 </div>
 
 <script>
-    const urlParams = new URLSearchParams(window.location.search);
-    const phase = urlParams.get('phase') || 'sapper'; // По умолчанию Сапер
+    // 1. КОНФИГУРАЦИЯ
+    const keys = { 'sapper': 'EXPLOSIVE', 'recon': 'RADAR' };
+    const nextCodes = { 'sapper': 'СЛЕДУЮЩИЙ КОД: RADAR', 'recon': 'ФИНАЛЬНЫЙ КОД: VICTOR' };
     
-    // Мастер-ключи для входа (те, что команда получает на предыдущем этапе)
-    const masterKeys = { 'sapper': 'EXPLOSIVE', 'recon': 'RADAR' };
-    const nextPhaseCodes = { 'sapper': 'КОД ДЛЯ РЕКОН: RADAR', 'recon': 'ФИНАЛЬНЫЙ КОД: VICTOR' };
-
-    let currentTask = 0;
-    let score = 0;
-    let timeLeft = 60;
-    let timerId;
-
     const sapperTasks = [
-        { q: "ШИФРОВКА: .-- --- -.. .- (ОТВЕТ - СЛОВО)", a: "ВОДА" },
-        { q: "КАЛИБР АК-74 (ЧИСЛО ЧЕРЕЗ ТОЧКУ)", a: "5.45" }
+        { q: "ШИФРОВКА: .-- --- -.. .-", a: "ВОДА" },
+        { q: "КАЛИБР АК-74", a: "5.45" }
     ];
 
     const reconTasks = [
-        { q: "ОПОЗНАНИЕ ЦЕЛИ #1", img: "t90.jpg", options: ["Т-72", "Т-90М", "Т-14"], a: "Т-90М" },
-        { q: "ОПОЗНАНИЕ ЦЕЛИ #2", img: "ka52.jpg", options: ["МИ-28", "МИ-8", "КА-52"], a: "КА-52" }
-        { q: "ОПОЗНАНИЕ ЦЕЛИ #3", img: "su57.jpg", options: ["СУ-35", "СУ-57", "МИГ-31"], a: "СУ-57" },
-        { q: "ОПОЗНАНИЕ ЦЕЛИ #4", img: "bmp3.jpg", options: ["БМП-3", "БТР-82", "МТ-ЛБ"], a: "БМП-3" },
-        { q: "ОПОЗНАНИЕ ЦЕЛИ #5", img: "pancir.jpg", options: ["БУК", "ТОР", "ПАНЦИРЬ-С1"], a: "ПАНЦИРЬ-С1" }
-];
+        { q: "ЦЕЛЬ #1", img: "t90.jpg", opt: ["Т-72", "Т-90М", "Т-14"], a: "Т-90М" },
+        { q: "ЦЕЛЬ #2", img: "ka52.jpg", opt: ["МИ-28", "МИ-8", "КА-52"], a: "КА-52" }
+    ];
 
-    // 1. Улучшенное определение фазы (считываем прямо в момент клика)
-    function getPhase() {
-        const params = new URLSearchParams(window.location.search);
-        return params.get('phase') || 'sapper'; 
-    }
+    // 2. СОСТОЯНИЕ
+    let urlParams = new URLSearchParams(window.location.search);
+    let currentPhase = urlParams.get('phase') || 'sapper';
+    let currentIdx = 0;
+    let score = 0;
+    let time = 60;
+    let timer;
 
-    const masterKeys = { 'sapper': 'EXPLOSIVE', 'recon': 'RADAR' };
-    const nextPhaseCodes = { 'sapper': 'КОД ДЛЯ РЕКОН: RADAR', 'recon': 'ФИНАЛЬНЫЙ КОД: VICTOR' };
+    // Инициализация заголовка
+    document.getElementById('phase-title').innerText = "ФАЗА: " + currentPhase.toUpperCase();
 
-    // 2. Бронебойная функция авторизации
+    // 3. ЛОГИКА
     function checkAuth() {
-        const currentPhase = getPhase(); // Определяем фазу заново при клике
-        const passInput = document.getElementById('pass-input').value.trim().toUpperCase();
-        const correctKey = masterKeys[currentPhase];
-
-        console.log("Phase:", currentPhase, "Input:", passInput, "Correct:", correctKey);
-
-        if (passInput === correctKey) {
-            document.getElementById('auth-screen').classList.add('hidden');
+        const val = document.getElementById('pass-input').value.trim().toUpperCase();
+        if (val === keys[currentPhase]) {
+            document.getElementById('auth-screen').className = 'hidden';
             document.getElementById('game-screen').classList.remove('hidden');
-            startPhase(currentPhase); // Передаем фазу внутрь
+            startTimer();
+            renderTask();
         } else {
-            alert("ОШИБКА! Введено: " + passInput + "\nОжидалось для фазы " + currentPhase + ": " + correctKey);
+            alert("ОТКАЗАНО! " + val + " НЕ ВЕРНО.");
         }
     }
 
-    function startPhase() {
-        timerId = setInterval(() => {
-            timeLeft--;
-            document.getElementById('timer').innerText = timeLeft;
-            if (timeLeft <= 0) endPhase();
+    function startTimer() {
+        timer = setInterval(() => {
+            time--;
+            document.getElementById('timer').innerText = time;
+            if (time <= 0) finish();
         }, 1000);
-        showTask();
     }
 
-    function showTask() {
-        const tasks = phase === 'sapper' ? sapperTasks : reconTasks;
-        if (currentTask >= tasks.length) { endPhase(); return; }
+    function renderTask() {
+        const pool = currentPhase === 'sapper' ? sapperTasks : reconTasks;
+        if (currentIdx >= pool.length) { finish(); return; }
 
-        const content = document.getElementById('content');
-        const task = tasks[currentTask];
-        content.innerHTML = `<h3>${task.q}</h3>`;
-        
-        if (task.img) { content.innerHTML += `<img src="${task.img}">`; }
+        const task = pool[currentIdx];
+        const cont = document.getElementById('task-content');
+        const opts = document.getElementById('opt-container');
+        const inp = document.getElementById('ans-input');
+        const btn = document.getElementById('submit-btn');
 
-        if (phase === 'recon') {
-            document.getElementById('answer-input').classList.add('hidden');
-            const optDiv = document.getElementById('options');
-            optDiv.classList.remove('hidden');
-            optDiv.innerHTML = '';
-            task.options.forEach(opt => {
-                optDiv.innerHTML += `<button onclick="setAnswer('${opt}')">${opt}</button>`;
+        cont.innerHTML = `<h3>${task.q}</h3>`;
+        if (task.img) cont.innerHTML += `<img src="${task.img}">`;
+
+        if (currentPhase === 'recon') {
+            inp.className = 'hidden';
+            btn.className = 'hidden';
+            opts.innerHTML = '';
+            task.opt.forEach(o => {
+                opts.innerHTML += `<button onclick="handleBtn('${o}')">${o}</button>`;
             });
-            document.getElementById('next-btn').classList.add('hidden');
         } else {
-            document.getElementById('answer-input').classList.remove('hidden');
-            document.getElementById('answer-input').value = '';
+            inp.classList.remove('hidden');
+            inp.value = '';
+            opts.innerHTML = '';
+            btn.classList.remove('hidden');
         }
     }
 
-    let selectedAnswer = "";
-    function setAnswer(val) { selectedAnswer = val; submitAnswer(); }
+    function handleBtn(val) { checkAndNext(val); }
+    function processAnswer() { checkAndNext(document.getElementById('ans-input').value); }
 
-    function submitAnswer() {
-        const tasks = phase === 'sapper' ? sapperTasks : reconTasks;
-        const correct = tasks[currentTask].a.toUpperCase();
-        const userAns = (phase === 'sapper' ? document.getElementById('answer-input').value : selectedAnswer).toUpperCase();
-
-        if (userAns === correct) score++;
-        currentTask++;
-        showTask();
+    function checkAndNext(val) {
+        const pool = currentPhase === 'sapper' ? sapperTasks : reconTasks;
+        if (val.trim().toUpperCase() === pool[currentIdx].a.toUpperCase()) score++;
+        currentIdx++;
+        renderTask();
     }
 
-    function endPhase() {
-        clearInterval(timerId);
-        document.getElementById('game-screen').classList.add('hidden');
+    function finish() {
+        clearInterval(timer);
+        document.getElementById('game-screen').className = 'hidden';
         document.getElementById('result-screen').classList.remove('hidden');
-        document.getElementById('score').innerText = score;
-        document.getElementById('next-code').innerText = nextPhaseCodes[phase];
+        document.getElementById('final-score').innerText = score;
+        document.getElementById('next-step-code').innerText = nextCodes[currentPhase];
     }
 </script>
 </body>
