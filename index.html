@@ -69,13 +69,30 @@
         { q: "ОПОЗНАНИЕ ЦЕЛИ #5", img: "pancir.jpg", options: ["БУК", "ТОР", "ПАНЦИРЬ-С1"], a: "ПАНЦИРЬ-С1" }
 ];
 
+    // 1. Улучшенное определение фазы (считываем прямо в момент клика)
+    function getPhase() {
+        const params = new URLSearchParams(window.location.search);
+        return params.get('phase') || 'sapper'; 
+    }
+
+    const masterKeys = { 'sapper': 'EXPLOSIVE', 'recon': 'RADAR' };
+    const nextPhaseCodes = { 'sapper': 'КОД ДЛЯ РЕКОН: RADAR', 'recon': 'ФИНАЛЬНЫЙ КОД: VICTOR' };
+
+    // 2. Бронебойная функция авторизации
     function checkAuth() {
-        const pass = document.getElementById('pass-input').value.toUpperCase();
-        if (pass === masterKeys[phase]) {
+        const currentPhase = getPhase(); // Определяем фазу заново при клике
+        const passInput = document.getElementById('pass-input').value.trim().toUpperCase();
+        const correctKey = masterKeys[currentPhase];
+
+        console.log("Phase:", currentPhase, "Input:", passInput, "Correct:", correctKey);
+
+        if (passInput === correctKey) {
             document.getElementById('auth-screen').classList.add('hidden');
             document.getElementById('game-screen').classList.remove('hidden');
-            startPhase();
-        } else { alert("ОШИБКА ДОСТУПА!"); }
+            startPhase(currentPhase); // Передаем фазу внутрь
+        } else {
+            alert("ОШИБКА! Введено: " + passInput + "\nОжидалось для фазы " + currentPhase + ": " + correctKey);
+        }
     }
 
     function startPhase() {
