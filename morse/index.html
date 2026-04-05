@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>L&⅂ | MORSE DECODER</title>
+    <style>
+        body { background: #050505; color: #00ff41; font-family: 'Courier New', monospace; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; margin: 0; overflow: hidden; }
+        #status { font-size: 12px; margin-bottom: 10px; letter-spacing: 2px; }
+        #display { width: 85%; height: 50px; border: 1px solid #00ff41; margin-bottom: 10px; display: flex; align-items: center; justify-content: center; font-size: 28px; background: rgba(0, 255, 65, 0.05); }
+        #result { font-size: 36px; font-weight: bold; color: #fff; text-shadow: 0 0 10px #00ff41; min-height: 44px; margin-bottom: 30px; }
+        .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; width: 85%; }
+        button { background: #111; color: #00ff41; border: 1px solid #00ff41; padding: 20px; font-size: 24px; font-family: inherit; transition: 0.1s; -webkit-tap-highlight-color: transparent; }
+        button:active { background: #00ff41; color: #000; }
+        .wide { grid-column: span 2; }
+        .red { color: #ff4141; border-color: #ff4141; }
+    </style>
+</head>
+<body>
+    <div id="status">L&⅂ // DECODER ACTIVE</div>
+    <div id="display"></div>
+    <div id="result">_</div>
+    
+    <div class="grid">
+        <button onmousedown="play(200); add('.')" onmouseup="stop()">● (Dot)</button>
+        <button onmousedown="play(600); add('-')" onmouseup="stop()">— (Dash)</button>
+        <button class="wide" onclick="decodeChar()">ПРИНЯТЬ БУКВУ [ENTER]</button>
+        <button onclick="addSpace()">ПРОБЕЛ [__]</button>
+        <button class="red" onclick="clearAll()">СБРОС [CLR]</button>
+    </div>
+
+    <script>
+        const ctx = new (window.AudioContext || window.webkitAudioContext)();
+        let osc;
+        const dict = { ".-":"А", "-...":"Б", ".--":"В", "--.":"Г", "-..":"Д", ".":"Е", "...-":"Ж", "--..":"З", "..":"И", ".---":"Й", "-.-":"К", ".-..":"Л", "--":"М", "-.":"Н", "---":"О", ".--.":"П", ".-.":"Р", "...":"С", "-":"Т", "..-":"У", "..-.":"Ф", "....":"Х", "-.-.":"Ц", "---.":"Ч", "----":"Ш", "--.-":"Щ", "-..-":"Ь", "-.--":"Ы", "..-..":"Э", "..--":"Ю", ".-.-":"Я", ".----":"1", "..---":"2", "...--":"3", "....-":"4", ".....":"5", "-....":"6", "--...":"7", "---..":"8", "----.":"9", "-----":"0" };
+        
+        let current = ""; let word = "";
+        function add(s) { current += s; document.getElementById('display').innerText = current; }
+        function addSpace() { word += " "; render(); }
+        function decodeChar() {
+            if(dict[current]) { word += dict[current]; current = ""; render(); } 
+            else { alert("СИГНАЛ НЕ РАСПОЗНАН"); current = ""; render(); }
+        }
+        function render() { document.getElementById('display').innerText = current; document.getElementById('result').innerText = word; }
+        function clearAll() { current = ""; word = ""; render(); }
+        
+        function play(len) {
+            osc = ctx.createOscillator();
+            const g = ctx.createGain();
+            osc.type = "sine"; osc.frequency.value = 600;
+            osc.connect(g); g.connect(ctx.destination);
+            osc.start();
+        }
+        function stop() { if(osc) { osc.stop(); } }
+    </script>
+</body>
+</html>
